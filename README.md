@@ -1,11 +1,11 @@
 # lb4-cache
+
 This is a small cli tool to add caching to an OpenAPI based controllers created in a LoopBack 4 app.
 At this point, the CLI only works for OpenAPI based contrllers created with `lb4 openapi`
 
 ## Installing
 
 `npm install lb4-cache`
-
 
 ## Prerequisites
 
@@ -27,5 +27,7 @@ At this point, the CLI only works for OpenAPI based contrllers created with `lb4
 --redisPassword: pass redis password. In case not provided, the default is empty string.
 
 --cacheTTL: Pass ttl (in seconds) for caching. If not provided, the default is 60 seconds. 
+
+--specURL: URL to open api specs. This is requried parameter.
 
 ```

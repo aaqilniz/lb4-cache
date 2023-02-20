@@ -9,6 +9,7 @@ const {
   isLoopBackApp,
   updateFile,
   addImport,
+  getControllerName
 } = require('./utils');
 
 module.exports = async () => {
@@ -17,25 +18,29 @@ module.exports = async () => {
     redisPort,
     redisPassword,
     redisDb,
-    cacheTTL
+    cacheTTL,
+    specURL
   } = yargs(process.argv.slice(2)).argv;
-  
+
   const log = console.log;
   const invokedFrom = process.cwd();
   const modelConfigs = JSON.stringify(require('./model-config'));
   const package = require(`${invokedFrom}/package.json`);
 
+  const controllerName = await getControllerName(specURL)
   if (!isLoopBackApp(package)) throw Error('Not a loopback project');
+
+  const openAPIControllerPath = `${invokedFrom}/src/controllers/${controllerName}.controller.ts`;
+  console.log(openAPIControllerPath)
+  if (!fs.existsSync(openAPIControllerPath)) {
+    throw Error('Please run lb4 openapi before running this command.');
+  }
 
   try {
     const deps = package.dependencies;
     const pkg = 'loopback-api-cache';
     if (!deps[pkg]) await execute(`npm i ${pkg}`, `Installing ${pkg}`);
     log(chalk.blue('Confirming if openapi routes are in place...'));
-    const openAPIControllerPath = `${invokedFrom}/src/controllers/open-api.controller.ts`;
-    if (!fs.existsSync(openAPIControllerPath)) {
-      throw Error('Please run lb4 openapi before running this command.');
-    }
     log(chalk.bold(chalk.green('OK.')));
 
     const modelPath = `${invokedFrom}/src/models/cache.model.ts`;
@@ -68,7 +73,7 @@ module.exports = async () => {
       fs.copyFileSync(path.join(__dirname, './text-codes/cache-strategy.provider.txt'), providerPath);
       log(chalk.bold(chalk.green('OK.')));
     }
-    
+
     const sequencePath = `${invokedFrom}/src/sequence.ts`;
     const file = fs.readFileSync(sequencePath, 'utf8');
     if (file.indexOf('loopback-api-cache') === -1) {

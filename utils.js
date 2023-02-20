@@ -2,6 +2,7 @@ const chalk = require('chalk');
 const debug = require('debug')('utils');
 const { exec } = require('child_process');
 const fs = require('fs');
+const loadSpecs = require('./loadSpecs');
 
 const log = console.log;
 
@@ -13,6 +14,33 @@ const execPromise = (command) => {
     });
   });
 }
+
+module.exports.getControllerName = async (specURL) => {
+  let controllerName = 'OpenApi';
+  const specs = await loadSpecs(specURL);
+  if (!specs) throw Error('No specs received');
+  if (!specs.paths) specs.paths = {};
+  const pathKeys = Object.keys(specs.paths);
+  if (!pathKeys.length) throw Error('No paths');
+  const path = specs.paths[pathKeys[0]];
+  const opKeys = Object.keys(path);
+  if (!opKeys.length) throw Error('No operations');
+  const op = path[opKeys[0]];
+  if (op['x-controller-name']) {
+    controllerName = op['x-controller-name'].replace('Controller', '');
+  }
+  if (!controllerName) {
+    if (op['tags'] && op['tags'].length) {
+      controllerName = op['tags'][0].replace('Controller', '');
+    }
+  }
+  return kebabCase(controllerName);
+}
+
+const kebabCase = string => string
+  .replace(/([a-z])([A-Z])/g, "$1-$2")
+  .replace(/[\s_]+/g, '-')
+  .toLowerCase();
 
 module.exports.execute = async (command, artifact, message) => {
   if (!artifact) log(chalk.blue(message));

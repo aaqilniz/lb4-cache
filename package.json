@@ -1,8 +1,12 @@
 {
   "name": "lb4-cache",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "a cli to add caching to openapi services created with lb4",
-  "keywords": ["lb4", "openapi", "cache"],
+  "keywords": [
+    "lb4",
+    "openapi",
+    "cache"
+  ],
   "homepage": "https://github.com/aaqilniz/lb4-cache#readme",
   "bugs": {
     "url": "https://github.com/aaqilniz/lb4-cache/issues",
@@ -24,6 +28,8 @@
   "dependencies": {
     "chalk": "^4.1.2",
     "debug": "^4.3.4",
+    "swagger-parser": "^10.0.3",
+    "swagger2openapi": "^7.0.8",
     "yargs": "^17.7.0"
   }
 }

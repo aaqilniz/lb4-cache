@@ -30,9 +30,8 @@ module.exports = async () => {
   const controllerName = await getControllerName(specURL)
   if (!isLoopBackApp(package)) throw Error('Not a loopback project');
 
-  const openAPIControllerPath = `${invokedFrom}/src/controllers/${controllerName}.controller.ts`;
-  console.log(openAPIControllerPath)
-  if (!fs.existsSync(openAPIControllerPath)) {
+  const controllerPath = `${invokedFrom}/src/controllers/${controllerName}.controller.ts`;
+  if (!fs.existsSync(controllerPath)) {
     throw Error('Please run lb4 openapi before running this command.');
   }
 
@@ -78,15 +77,17 @@ module.exports = async () => {
     const file = fs.readFileSync(sequencePath, 'utf8');
     if (file.indexOf('loopback-api-cache') === -1) {
       log(chalk.blue('rewriting sequence.ts'));
-      console.log('Updating sequence.');
       fs.copyFileSync(path.join(__dirname, './text-codes/sequence.txt'), sequencePath);
       log(chalk.bold(chalk.green('OK.')));
     }
 
+    log(chalk.blue('adding new imports to application.ts'));
     const applicationPath = `${invokedFrom}/src/application.ts`;
     addImport(applicationPath, 'import {CacheBindings, CacheComponent} from \'loopback-api-cache\';');
     addImport(applicationPath, 'import {CacheStrategyProvider} from \'./providers/cache-strategy.provider\';');
+    log(chalk.bold(chalk.green('OK.')));
 
+    log(chalk.blue('updating application.ts'));
     updateFile(
       applicationPath,
       'super(options);',
@@ -98,8 +99,9 @@ module.exports = async () => {
       'this.component(CacheComponent);',
       'this.bind(CacheBindings.CACHE_STRATEGY).toProvider(CacheStrategyProvider);'
     );
+    log(chalk.bold(chalk.green('OK.')));
 
-    const controllerPath = `${invokedFrom}/src/controllers/open-api.controller.ts`;
+    log(chalk.blue('adding new imports to application.ts'));
     addImport(controllerPath, 'import {cache} from \'loopback-api-cache\';');
 
     updateFile(

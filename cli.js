@@ -9,49 +9,59 @@ const {
   isLoopBackApp,
   updateFile,
   addImport,
-  getControllerName
+  getControllerName,
+  log
 } = require('./utils');
 
 module.exports = async () => {
   const {
     redisHost,
     redisPort,
+    redisUser,
     redisPassword,
     redisDb,
     cacheTTL,
     specURL
   } = yargs(process.argv.slice(2)).argv;
 
-  const log = console.log;
   const invokedFrom = process.cwd();
   const modelConfigs = JSON.stringify(require('./model-config'));
   const package = require(`${invokedFrom}/package.json`);
 
-  const controllerName = await getControllerName(specURL)
-  if (!isLoopBackApp(package)) throw Error('Not a loopback project');
 
+  log(chalk.blue('Confirming if this is a LoopBack 4 project.'));
+  if (!isLoopBackApp(package)) throw Error('Not a loopback project');
+  log(chalk.bold(chalk.green('OK.')));
+
+  const controllerName = await getControllerName(specURL, invokedFrom)
   const controllerPath = `${invokedFrom}/src/controllers/${controllerName}.controller.ts`;
+
+  log(chalk.blue('Confirming if openapi routes are in place...'));
   if (!fs.existsSync(controllerPath)) {
-    throw Error('Please run lb4 openapi before running this command.');
+    throw Error('Please run lb4 openapi before this.');
   }
+  log(chalk.bold(chalk.green('OK.')));
 
   try {
     const deps = package.dependencies;
     const pkg = 'loopback-api-cache';
-    if (!deps[pkg]) await execute(`npm i ${pkg}`, `Installing ${pkg}`);
-    log(chalk.blue('Confirming if openapi routes are in place...'));
-    log(chalk.bold(chalk.green('OK.')));
+    if (!deps[pkg]) {
+      await execute(`npm i ${pkg}`, `Installing ${pkg}`);
+    }
 
     const modelPath = `${invokedFrom}/src/models/cache.model.ts`;
     if (!fs.existsSync(modelPath)) {
-      await execute(`lb4 model -c '${modelConfigs}' --yes`, 'model');
+      await execute(
+        `lb4 model -c '${modelConfigs}' --yes`,
+        'Creating cache model'
+      );
     }
 
     const dsPath = `${invokedFrom}/src/datasources/cache.datasource.ts`;
     if (!fs.existsSync(dsPath)) {
       await execute(
-        `lb4 datasource -c '{"name":"cache","connector":"kv-redis","url":"","host":"${redisHost || '127.0.0.1'}","port":"${redisPort || '6379'}","password": "${redisPassword || ''}","db":"${redisDb || 0}"}' -y && yarn build`,
-        'datasource'
+        `lb4 datasource -c '{"name":"cache","connector":"kv-redis","url":"","host":"${redisHost || '127.0.0.1'}","port":"${redisPort || '6379'}", "user": "${redisUser || 'root'}", "password": "${redisPassword || ''}","db":"${redisDb || 0}"}' -y && yarn build`,
+        'Creating cache datasource'
       );
     }
 
@@ -59,7 +69,7 @@ module.exports = async () => {
     if (!fs.existsSync(repoPath)) {
       await execute(
         `lb4 repository -c '{"name":"Cache", "datasource":"cache", "model":"Cache", "repositoryBaseClass":"DefaultKeyValueRepository"}' --yes`,
-        'repository'
+        'Creating cache repository'
       );
     }
 
@@ -68,7 +78,7 @@ module.exports = async () => {
 
     const providerPath = `${invokedFrom}/src/providers/cache-strategy.provider.ts`;
     if (!fs.existsSync(providerPath)) {
-      log(chalk.blue('creating cache provider.'));
+      log(chalk.blue('Creating cache provider.'));
       fs.copyFileSync(path.join(__dirname, './text-codes/cache-strategy.provider.txt'), providerPath);
       log(chalk.bold(chalk.green('OK.')));
     }
@@ -76,18 +86,18 @@ module.exports = async () => {
     const sequencePath = `${invokedFrom}/src/sequence.ts`;
     const file = fs.readFileSync(sequencePath, 'utf8');
     if (file.indexOf('loopback-api-cache') === -1) {
-      log(chalk.blue('rewriting sequence.ts'));
+      log(chalk.blue('Rewriting sequence.ts'));
       fs.copyFileSync(path.join(__dirname, './text-codes/sequence.txt'), sequencePath);
       log(chalk.bold(chalk.green('OK.')));
     }
 
-    log(chalk.blue('adding new imports to application.ts'));
+    log(chalk.blue('Adding imports to application.ts'));
     const applicationPath = `${invokedFrom}/src/application.ts`;
     addImport(applicationPath, 'import {CacheBindings, CacheComponent} from \'loopback-api-cache\';');
     addImport(applicationPath, 'import {CacheStrategyProvider} from \'./providers/cache-strategy.provider\';');
     log(chalk.bold(chalk.green('OK.')));
 
-    log(chalk.blue('updating application.ts'));
+    log(chalk.blue('Updating application.ts'));
     updateFile(
       applicationPath,
       'super(options);',
@@ -101,15 +111,15 @@ module.exports = async () => {
     );
     log(chalk.bold(chalk.green('OK.')));
 
-    log(chalk.blue('adding new imports to application.ts'));
+    log(chalk.blue('Adding new imports to controller.ts'));
     addImport(controllerPath, 'import {cache} from \'loopback-api-cache\';');
 
     updateFile(
       controllerPath,
-      '@operation(',
+      '@operation(\'get\'',
       `@cache(${cacheTTL || 60})`,
-      true,
-      true
+      true, //add before
+      true  // replace all occurances
     );
     log(chalk.green('Everything done.'));
     process.exit(0);

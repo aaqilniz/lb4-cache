@@ -4,8 +4,7 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const loadSpecs = require('./loadSpecs');
 
-const log = console.log;
-
+module.exports.log = console.log;
 
 const execPromise = (command) => {
   return new Promise((resolve, reject) => {
@@ -15,20 +14,26 @@ const execPromise = (command) => {
   });
 }
 
-module.exports.getControllerName = async (specURL) => {
+module.exports.getControllerName = async (specURL, invokedFrom) => {
   let controllerName = 'OpenApi';
-  const specs = await loadSpecs(specURL);
+  
+  const specs = await loadSpecs(specURL, invokedFrom);
   if (!specs) throw Error('No specs received');
   if (!specs.paths) specs.paths = {};
+
   const pathKeys = Object.keys(specs.paths);
   if (!pathKeys.length) throw Error('No paths');
+
   const path = specs.paths[pathKeys[0]];
   const opKeys = Object.keys(path);
   if (!opKeys.length) throw Error('No operations');
+
   const op = path[opKeys[0]];
+
   if (op['x-controller-name']) {
     controllerName = op['x-controller-name'].replace('Controller', '');
   }
+
   if (!controllerName) {
     if (op['tags'] && op['tags'].length) {
       controllerName = op['tags'][0].replace('Controller', '');
@@ -42,16 +47,14 @@ const kebabCase = string => string
   .replace(/[\s_]+/g, '-')
   .toLowerCase();
 
-module.exports.execute = async (command, artifact, message) => {
-  if (!artifact) log(chalk.blue(message));
-  if (artifact) log(chalk.blue(`running command to create cache ${artifact}`));
-
+module.exports.execute = async (command, message) => {
+  this.log(chalk.blue(message));
   const executed = await execPromise(command);
   if (executed.error) {
     debug(executed.error);
     throw Error(`failed to execute ${command}`);
   }
-  if (executed.stdout) log(chalk.bold(chalk.green('OK.')));
+  this.log(chalk.bold(chalk.green('OK.')));
 }
 
 module.exports.isLoopBackApp = (package) => {

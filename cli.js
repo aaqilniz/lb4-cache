@@ -14,16 +14,27 @@ const {
 } = require('./utils');
 
 module.exports = async () => {
-  const {
+  let {
     redisHost,
     redisPort,
     redisUser,
     redisPassword,
     redisDb,
     cacheTTL,
-    specURL
+    specURL,
+    config
   } = yargs(process.argv.slice(2)).argv;
 
+  if(config && typeof config === 'string') {
+    config = JSON.parse(config);
+    redisHost = config.redisHost;
+    redisPort = config.redisPort;
+    redisUser = config.redisUser;
+    redisPassword = config.redisPassword;
+    redisDb = config.redisDb;
+    cacheTTL = config.cacheTTL;
+    specURL = config.specURL;
+  }
   const invokedFrom = process.cwd();
   const modelConfigs = JSON.stringify(require('./model-config'));
   const package = require(`${invokedFrom}/package.json`);

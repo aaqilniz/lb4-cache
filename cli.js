@@ -36,7 +36,7 @@ module.exports = async () => {
     specURL = config.specURL;
   }
   const invokedFrom = process.cwd();
-  const modelConfigs = JSON.stringify(require('./model-config'));
+  const modelConfigs = JSON.stringify(require('./model-config.json'));
   const package = require(`${invokedFrom}/package.json`);
 
 

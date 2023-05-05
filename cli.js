@@ -15,11 +15,7 @@ const {
 
 module.exports = async () => {
   let {
-    redisHost,
-    redisPort,
-    redisUser,
-    redisPassword,
-    redisDb,
+    redisDS,
     cacheTTL,
     specURL,
     config
@@ -27,11 +23,7 @@ module.exports = async () => {
 
   if(config && typeof config === 'string') {
     config = JSON.parse(config);
-    redisHost = config.redisHost;
-    redisPort = config.redisPort;
-    redisUser = config.redisUser;
-    redisPassword = config.redisPassword;
-    redisDb = config.redisDb;
+    redisDS = config.redisDS;
     cacheTTL = config.cacheTTL;
     specURL = config.specURL;
   }
@@ -68,18 +60,10 @@ module.exports = async () => {
       );
     }
 
-    const dsPath = `${invokedFrom}/src/datasources/cache.datasource.ts`;
-    if (!fs.existsSync(dsPath)) {
-      await execute(
-        `lb4 datasource -c '{"name":"cache","connector":"kv-redis","url":"","host":"${redisHost || '127.0.0.1'}","port":"${redisPort || '6379'}", "user": "${redisUser || 'root'}", "password": "${redisPassword || ''}","db":"${redisDb || 0}"}' -y && yarn build`,
-        'Creating cache datasource'
-      );
-    }
-
     const repoPath = `${invokedFrom}/src/repositories/cache.repository.ts`;
     if (!fs.existsSync(repoPath)) {
       await execute(
-        `lb4 repository -c '{"name":"Cache", "datasource":"cache", "model":"Cache", "repositoryBaseClass":"DefaultKeyValueRepository"}' --yes`,
+        `lb4 repository -c '{"name":"Cache", "datasource":"${redisDS}", "model":"Cache", "repositoryBaseClass":"DefaultKeyValueRepository"}' --yes`,
         'Creating cache repository'
       );
     }

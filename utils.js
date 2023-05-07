@@ -14,32 +14,103 @@ const execPromise = (command) => {
   });
 }
 
-module.exports.getControllerName = async (specURL, invokedFrom) => {
+const getCircularReplacer = () => {
+  const seen = new WeakSet();
+  return (key, value) => {
+    if (typeof value === "object" && value !== null) {
+      if (seen.has(value)) {
+        return;
+      }
+      seen.add(value);
+    }
+    return value;
+  };
+};
+
+module.exports.getControllerNames = async (specURL, invokedFrom) => {
   let controllerName = 'OpenApi';
-  
-  const specs = await loadSpecs(specURL, invokedFrom);
+  const controllerNames = new Set();
+
+  let specs = await loadSpecs(specURL, invokedFrom);
+
   if (!specs) throw Error('No specs received');
   if (!specs.paths) specs.paths = {};
 
-  const pathKeys = Object.keys(specs.paths);
-  if (!pathKeys.length) throw Error('No paths');
+  const { components, paths } = specs;
+  let stringifiedApiSpecs = JSON.stringify(specs, getCircularReplacer());
 
-  const path = specs.paths[pathKeys[0]];
-  const opKeys = Object.keys(path);
-  if (!opKeys.length) throw Error('No operations');
-
-  const op = path[opKeys[0]];
-
-  if (op['x-controller-name']) {
-    controllerName = op['x-controller-name'].replace('Controller', '');
+  // rewrite WithRelations and append OpenAPI at the end to avoid duplications
+  stringifiedApiSpecs = stringifiedApiSpecs.replaceAll(
+    'WithRelations',
+    'WithRelationsOpenAPI',
+  );
+  // avoid duplication of paths by appending openapi
+  if (paths) {
+    Object.keys(paths).forEach(eachPath => {
+      if (!eachPath.includes('{id}') && !eachPath.includes('count')) {
+        const updatedPath =
+          eachPath.slice(0, 0) + '/openapi/' + eachPath.slice(1);
+        stringifiedApiSpecs = stringifiedApiSpecs.replaceAll(
+          eachPath,
+          updatedPath,
+        );
+      }
+    });
   }
-
-  if (!controllerName) {
-    if (op['tags'] && op['tags'].length) {
-      controllerName = op['tags'][0].replace('Controller', '');
+  // rewrite every item and append OpenAPI in the start
+  if (components) {
+    const { schemas } = components;
+    if (schemas) {
+      Object.keys(schemas).forEach(item => {
+        if (
+          !item.startsWith('loopback') &&
+          !item.startsWith('New') &&
+          !item.endsWith('Relations') &&
+          !item.endsWith('Partial') &&
+          !item.includes('Through') &&
+          !item.includes('.') &&
+          !item.includes('Ping')
+        ) {
+          stringifiedApiSpecs = stringifiedApiSpecs.replaceAll(
+            item,
+            'OpenApi' + item,
+          );
+        }
+        if (item.includes('Ping')) {
+          stringifiedApiSpecs = stringifiedApiSpecs.replaceAll(
+            'Ping',
+            'OpenApi' + 'Ping',
+          );
+        }
+      });
     }
   }
-  return kebabCase(controllerName);
+  specs = JSON.parse(stringifiedApiSpecs);
+
+  const pathKeys = Object.keys(specs.paths);
+  if (!pathKeys.length) throw Error('No paths');
+  pathKeys.forEach(eachPath => {
+    const path = specs.paths[eachPath];
+    const opKeys = Object.keys(path);
+    if (!opKeys.length) throw Error('No operations');
+    const op = path[opKeys[0]];
+    const tags = op['tags'];
+    if (tags && tags.length) {
+      tags.forEach((tag, index) => {
+        if (tag.includes('OpenApi')) {
+          tags[index] = tag.split('OpenApi')[1];
+        }
+      });
+      controllerName = tags[0].replace('Controller', '');
+    }
+    if (!controllerName) {
+      if (op['x-controller-name']) {
+        controllerName = op['x-controller-name'].replace('Controller', '');
+      }
+    }
+    controllerNames.add('openapi.' + kebabCase(controllerName))
+  });
+  return controllerNames;
 }
 
 const kebabCase = string => string

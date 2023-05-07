@@ -9,7 +9,7 @@ const {
   isLoopBackApp,
   updateFile,
   addImport,
-  getControllerName,
+  getControllerNames,
   log
 } = require('./utils');
 
@@ -27,23 +27,25 @@ module.exports = async () => {
     cacheTTL = config.cacheTTL;
     specURL = config.specURL;
   }
+
   const invokedFrom = process.cwd();
   const modelConfigs = JSON.stringify(require('./model-config.json'));
   const package = require(`${invokedFrom}/package.json`);
-
 
   log(chalk.blue('Confirming if this is a LoopBack 4 project.'));
   if (!isLoopBackApp(package)) throw Error('Not a loopback project');
   log(chalk.bold(chalk.green('OK.')));
 
-  const controllerName = await getControllerName(specURL, invokedFrom)
-  const controllerPath = `${invokedFrom}/src/controllers/openapi.${controllerName}.controller.ts`;
-
+  const controllerNames = await getControllerNames(specURL, invokedFrom);
   log(chalk.blue('Confirming if openapi routes are in place...'));
-  if (!fs.existsSync(controllerPath)) {
-    throw Error('Please run lb4 openapi before this.');
-  }
+  controllerNames.forEach(controllerName => {
+    const controllerPath = `${invokedFrom}/src/controllers/${controllerName}.controller.ts`;
+    if (!fs.existsSync(controllerPath)) {
+      throw Error('Please run lb4 openapi before this.');
+    }
+  });
   log(chalk.bold(chalk.green('OK.')));
+
 
   try {
     const deps = package.dependencies;
@@ -106,19 +108,23 @@ module.exports = async () => {
     );
     log(chalk.bold(chalk.green('OK.')));
 
+    
     log(chalk.blue('Adding new imports to controller.ts'));
-    addImport(controllerPath, 'import {cache} from \'loopback-api-cache\';');
-
-    updateFile(
-      controllerPath,
-      '@operation(\'get\'',
-      `@cache(${cacheTTL || 60})`,
-      true, //add before
-      true  // replace all occurances
-    );
+    controllerNames.forEach(controllerName => {
+      const controllerPath = `${invokedFrom}/src/controllers/${controllerName}.controller.ts`;
+      addImport(controllerPath, 'import {cache} from \'loopback-api-cache\';');
+      updateFile(
+        controllerPath,
+        '@operation(\'get\'',
+        `@cache(${cacheTTL || 60})`,
+        true, //add before
+        true  // replace all occurances
+      );
+    });
     log(chalk.green('Everything done.'));
     process.exit(0);
   } catch (error) {
+    console.log(error);
     debug(error);
     throw Error('Operation failed.');
   }

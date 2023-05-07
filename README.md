@@ -15,21 +15,13 @@ At this point, the CLI only works for OpenAPI based contrllers created with `lb4
 ## How to run
 
 - With default options: `lb4-cache`
-- With custom options: `lb4-cache --redisHost localhost --redisPort 6379 --redisPassword "" --redisDb 0 --cacheTTL 10`
+- With custom options: `lb4-cache --redisDS redisDataSource --cacheTTL 10 --specURL 'http://localhost:3000/openapi.json'`
 
 ### Options
 
 ```
---specURL: URL to open api specs. This is requried parameter.
-
---redisHost: pass redis host. Default is 127.0.0.1.
-
---redisPort: pass redis port. Default is 6379.
-
---redisUser: pass redis user. Default is root
-
---redisPassword: pass redis password. Default is empty string.
-
+--redisDS: pass redis datasource generated with lb4 datasource. This is a required parameter.
 --cacheTTL: Pass ttl (in seconds) for caching. Default is 60 seconds. 
+--specURL: URL to open api specs. This is requried parameter.
 
 ```

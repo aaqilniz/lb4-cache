@@ -37,7 +37,7 @@ module.exports = async () => {
   log(chalk.bold(chalk.green('OK.')));
 
   const controllerName = await getControllerName(specURL, invokedFrom)
-  const controllerPath = `${invokedFrom}/src/controllers/${controllerName}.controller.ts`;
+  const controllerPath = `${invokedFrom}/src/controllers/openapi.${controllerName}.controller.ts`;
 
   log(chalk.blue('Confirming if openapi routes are in place...'));
   if (!fs.existsSync(controllerPath)) {

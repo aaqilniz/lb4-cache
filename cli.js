@@ -10,6 +10,7 @@ const {
   updateFile,
   addImport,
   getControllerNames,
+  kebabCase,
   log
 } = require('./utils');
 
@@ -18,6 +19,7 @@ module.exports = async () => {
     redisDS,
     cacheTTL,
     specURL,
+    prefix,
     config
   } = yargs(process.argv.slice(2)).argv;
 
@@ -26,7 +28,10 @@ module.exports = async () => {
     redisDS = config.redisDS;
     cacheTTL = config.cacheTTL;
     specURL = config.specURL;
+    prefix = config.prefix;
   }
+  if(!prefix) prefix = 'openapi';
+  prefix = prefix.replace(/\w+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
 
   const invokedFrom = process.cwd();
   const modelConfigs = JSON.stringify(require('./model-config.json'));
@@ -36,8 +41,9 @@ module.exports = async () => {
   if (!isLoopBackApp(package)) throw Error('Not a loopback project');
   log(chalk.bold(chalk.green('OK.')));
 
-  const controllerNames = await getControllerNames(specURL, invokedFrom);
+  const controllerNames = await getControllerNames(specURL, invokedFrom, prefix);
   log(chalk.blue('Confirming if openapi routes are in place...'));
+  
   controllerNames.forEach(controllerName => {
     const controllerPath = `${invokedFrom}/src/controllers/${controllerName}.controller.ts`;
     if (!fs.existsSync(controllerPath)) {
@@ -45,7 +51,13 @@ module.exports = async () => {
     }
   });
   log(chalk.bold(chalk.green('OK.')));
-
+  
+  log(chalk.blue('Confirming if datasource is generated...'));
+  const datasourcePath = `${invokedFrom}/src/datasources/${kebabCase(redisDS)}.datasource.ts`;
+  if (!fs.existsSync(datasourcePath)) {
+    throw Error('Please generate the datasource first.');
+  }
+  log(chalk.bold(chalk.green('OK.')));
 
   try {
     const deps = package.dependencies;
@@ -116,7 +128,7 @@ module.exports = async () => {
       updateFile(
         controllerPath,
         '@operation(\'get\'',
-        `@cache(${cacheTTL || 60})`,
+        `@cache(${cacheTTL || 60*1000})`,
         true, //add before
         true  // replace all occurances
       );

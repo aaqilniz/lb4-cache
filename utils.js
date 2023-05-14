@@ -27,7 +27,7 @@ const getCircularReplacer = () => {
   };
 };
 
-module.exports.getControllerNames = async (specURL, invokedFrom) => {
+module.exports.getControllerNames = async (specURL, invokedFrom, prefix) => {
   let controllerName = 'OpenApi';
   const controllerNames = new Set();
 
@@ -39,17 +39,17 @@ module.exports.getControllerNames = async (specURL, invokedFrom) => {
   const { components, paths } = specs;
   let stringifiedApiSpecs = JSON.stringify(specs, getCircularReplacer());
 
-  // rewrite WithRelations and append OpenAPI at the end to avoid duplications
+  // rewrite WithRelations and append prefix to avoid duplications
   stringifiedApiSpecs = stringifiedApiSpecs.replaceAll(
     'WithRelations',
-    'WithRelationsOpenAPI',
+    `${prefix}WithRelations`,
   );
-  // avoid duplication of paths by appending openapi
+  // avoid duplication of paths by appending prefix
   if (paths) {
     Object.keys(paths).forEach(eachPath => {
       if (!eachPath.includes('{id}') && !eachPath.includes('count')) {
         const updatedPath =
-          eachPath.slice(0, 0) + '/openapi/' + eachPath.slice(1);
+          eachPath.slice(0, 0) + `${prefix.toLowerCase()}.` + eachPath.slice(1);
         stringifiedApiSpecs = stringifiedApiSpecs.replaceAll(
           eachPath,
           updatedPath,
@@ -57,7 +57,7 @@ module.exports.getControllerNames = async (specURL, invokedFrom) => {
       }
     });
   }
-  // rewrite every item and append OpenAPI in the start
+  // rewrite every item and append prefix
   if (components) {
     const { schemas } = components;
     if (schemas) {
@@ -73,13 +73,13 @@ module.exports.getControllerNames = async (specURL, invokedFrom) => {
         ) {
           stringifiedApiSpecs = stringifiedApiSpecs.replaceAll(
             item,
-            'OpenApi' + item,
+            prefix + item,
           );
         }
         if (item.includes('Ping')) {
           stringifiedApiSpecs = stringifiedApiSpecs.replaceAll(
             'Ping',
-            'OpenApi' + 'Ping',
+            prefix + 'Ping',
           );
         }
       });
@@ -97,8 +97,8 @@ module.exports.getControllerNames = async (specURL, invokedFrom) => {
     const tags = op['tags'];
     if (tags && tags.length) {
       tags.forEach((tag, index) => {
-        if (tag.includes('OpenApi')) {
-          tags[index] = tag.split('OpenApi')[1];
+        if (tag.includes(prefix)) {
+          tags[index] = tag.split(prefix)[1];
         }
       });
       controllerName = tags[0].replace('Controller', '');
@@ -108,12 +108,12 @@ module.exports.getControllerNames = async (specURL, invokedFrom) => {
         controllerName = op['x-controller-name'].replace('Controller', '');
       }
     }
-    controllerNames.add('openapi.' + kebabCase(controllerName))
+    controllerNames.add(`${prefix.toLowerCase()}.` + this.kebabCase(controllerName))
   });
   return controllerNames;
 }
 
-const kebabCase = string => string
+module.exports.kebabCase = string => string
   .replace(/([a-z])([A-Z])/g, "$1-$2")
   .replace(/[\s_]+/g, '-')
   .toLowerCase();

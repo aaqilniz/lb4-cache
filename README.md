@@ -14,14 +14,14 @@ At this point, the CLI only works for OpenAPI based contrllers created with `lb4
 
 ## How to run
 
-- With default options: `lb4-cache`
-- With custom options: `lb4-cache --redisDS redisDataSource --cacheTTL 10 --specURL 'http://localhost:3000/openapi.json'`
+- With default options: `lb4-cache --redisDS redisDataSource --specURL 'http://localhost:3000/openapi.json'`
+- With custom options: `lb4-cache --prefix openapi --redisDS redisDataSource --cacheTTL 60000 --specURL 'http://localhost:3000/openapi.json'`
 
 ### Options
 
 ```
 --redisDS: pass redis datasource generated with lb4 datasource. This is a required parameter.
---cacheTTL: Pass ttl (in seconds) for caching. Default is 60 seconds. 
+--cacheTTL: Pass ttl (in miliseconds) for caching. Default is 60 seconds. 
 --specURL: URL to open api specs. This is requried parameter.
-
+--prefix: prefix passed to lb4 openapi. Default is 'openapi'
 ```

@@ -20,7 +20,8 @@ module.exports = async () => {
     cacheTTL,
     specURL,
     prefix,
-    config
+    config,
+    openapi
   } = yargs(process.argv.slice(2)).argv;
 
   if(config && typeof config === 'string') {
@@ -30,6 +31,13 @@ module.exports = async () => {
     specURL = config.specURL;
     prefix = config.prefix;
   }
+  
+  if(openapi && typeof openapi === 'string') {
+    openapi = JSON.parse(openapi);
+    specURL = openapi.specURL;
+    prefix = openapi.prefix;
+  }
+
   if(!prefix) prefix = 'openapi';
   prefix = prefix.replace(/\w+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
 

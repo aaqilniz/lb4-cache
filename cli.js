@@ -34,7 +34,7 @@ module.exports = async () => {
   
   if(openapi && typeof openapi === 'string') {
     openapi = JSON.parse(openapi);
-    specURL = openapi.specURL;
+    specURL = openapi.url;
     prefix = openapi.prefix;
   }
 

@@ -1,6 +1,6 @@
 {
   "name": "lb4-cache",
-  "version": "1.0.11",
+  "version": "1.0.13",
   "description": "a cli to add caching to openapi services created with lb4",
   "keywords": [
     "lb4",

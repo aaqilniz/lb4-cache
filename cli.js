@@ -69,7 +69,7 @@ module.exports = async () => {
 
   try {
     const deps = package.dependencies;
-    const pkg = 'loopback-api-cache';
+    const pkg = '@aaqilniz/rest-cache';
     if (!deps[pkg]) {
       await execute(`npm i ${pkg}`, `Installing ${pkg}`);
     }
@@ -102,7 +102,7 @@ module.exports = async () => {
 
     const sequencePath = `${invokedFrom}/src/sequence.ts`;
     const file = fs.readFileSync(sequencePath, 'utf8');
-    if (file.indexOf('loopback-api-cache') === -1) {
+    if (file.indexOf('@aaqilniz/rest-cache') === -1) {
       log(chalk.blue('Rewriting sequence.ts'));
       fs.copyFileSync(path.join(__dirname, './text-codes/sequence.txt'), sequencePath);
       log(chalk.bold(chalk.green('OK.')));
@@ -110,7 +110,7 @@ module.exports = async () => {
 
     log(chalk.blue('Adding imports to application.ts'));
     const applicationPath = `${invokedFrom}/src/application.ts`;
-    addImport(applicationPath, 'import {CacheBindings, CacheComponent} from \'loopback-api-cache\';');
+    addImport(applicationPath, 'import {CacheBindings, CacheComponent} from \'@aaqilniz/rest-cache\';');
     addImport(applicationPath, 'import {CacheStrategyProvider} from \'./providers/cache-strategy.provider\';');
     log(chalk.bold(chalk.green('OK.')));
 
@@ -132,7 +132,7 @@ module.exports = async () => {
     log(chalk.blue('Adding new imports to controller.ts'));
     controllerNames.forEach(controllerName => {
       const controllerPath = `${invokedFrom}/src/controllers/${controllerName}.controller.ts`;
-      addImport(controllerPath, 'import {cache} from \'loopback-api-cache\';');
+      addImport(controllerPath, 'import {cache} from \'@aaqilniz/rest-cache\';');
       updateFile(
         controllerPath,
         '@operation(\'get\'',

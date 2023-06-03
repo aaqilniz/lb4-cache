@@ -1,6 +1,6 @@
 import { inject, Provider, ValueOrPromise } from '@loopback/core';
 import { repository } from '@loopback/repository';
-import { CacheBindings, CacheMetadata, CacheStrategy } from 'loopback-api-cache';
+import { CacheBindings, CacheMetadata, CacheStrategy } from '@aaqilniz/rest-cache';
 import {Cache} from '../models';
 import { CacheRepository } from '../repositories';
 

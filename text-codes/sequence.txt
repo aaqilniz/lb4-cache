@@ -1,6 +1,6 @@
 import { inject } from '@loopback/context';
 import { FindRoute, InvokeMethod, ParseParams, Reject, RequestContext, RestBindings, Send, SequenceHandler } from '@loopback/rest';
-import { CacheBindings, CacheCheckFn, CacheSetFn } from 'loopback-api-cache';
+import { CacheBindings, CacheCheckFn, CacheSetFn } from '@aaqilniz/rest-cache';
  
 const SequenceActions = RestBindings.SequenceActions;
  

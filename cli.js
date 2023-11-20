@@ -100,11 +100,13 @@ module.exports = async () => {
       log(chalk.bold(chalk.green('OK.')));
     }
 
-    const sequencePath = `${invokedFrom}/src/sequence.ts`;
-    const file = fs.readFileSync(sequencePath, 'utf8');
-    if (file.indexOf('@aaqilniz/rest-cache') === -1) {
-      log(chalk.blue('Rewriting sequence.ts'));
-      fs.copyFileSync(path.join(__dirname, './text-codes/sequence.txt'), sequencePath);
+    const middlewareDir = `${invokedFrom}/src/middleware`;
+    if (!fs.existsSync(middlewareDir)) fs.mkdirSync(middlewareDir);
+
+    const middlewarePath = `${invokedFrom}/src/middleware/cache.middleware.ts`;
+    if (!fs.existsSync(middlewarePath)) {
+      log(chalk.blue('Creating cache middleware.'));
+      fs.copyFileSync(path.join(__dirname, './text-codes/cache.middleware.txt'), middlewarePath);
       log(chalk.bold(chalk.green('OK.')));
     }
 
@@ -112,6 +114,7 @@ module.exports = async () => {
     const applicationPath = `${invokedFrom}/src/application.ts`;
     addImport(applicationPath, 'import {CacheBindings, CacheComponent} from \'@aaqilniz/rest-cache\';');
     addImport(applicationPath, 'import {CacheStrategyProvider} from \'./providers/cache-strategy.provider\';');
+    addImport(applicationPath, 'import {CacheMiddlewareProvider} from \'./middleware/cache.middleware\';');
     log(chalk.bold(chalk.green('OK.')));
 
     log(chalk.blue('Updating application.ts'));
@@ -125,6 +128,12 @@ module.exports = async () => {
       applicationPath,
       'this.component(CacheComponent);',
       'this.bind(CacheBindings.CACHE_STRATEGY).toProvider(CacheStrategyProvider);'
+    );
+
+    updateFile(
+      applicationPath,
+      'this.bind(CacheBindings.CACHE_STRATEGY).toProvider(CacheStrategyProvider);',
+      'this.middleware(CacheMiddlewareProvider);'
     );
     log(chalk.bold(chalk.green('OK.')));
 

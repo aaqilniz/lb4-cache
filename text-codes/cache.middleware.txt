@@ -1,0 +1,38 @@
+import { inject, injectable, Provider } from '@loopback/core';
+import { asMiddleware, Middleware, RestMiddlewareGroups } from '@loopback/rest';
+import { CacheBindings, CacheCheckFn, CacheSetFn } from '@aaqilniz/rest-cache';
+
+@injectable(
+    asMiddleware({
+        group: 'cache',
+        upstreamGroups: RestMiddlewareGroups.AUTHENTICATION,
+        downstreamGroups: RestMiddlewareGroups.INVOKE_METHOD,
+    }),
+    {
+        tags: { name: 'Cache' },
+    },
+)
+export class CacheMiddlewareProvider implements Provider<Middleware> {
+    constructor(
+        @inject(CacheBindings.CACHE_CHECK_ACTION) protected checkCache: CacheCheckFn,
+        @inject(CacheBindings.CACHE_SET_ACTION) protected setCache: CacheSetFn
+    ) { }
+
+    value(): Middleware {
+        const cacheMiddleware: Middleware = async (ctx, next) => {
+            const { request } = ctx;
+            if (!request.url.includes('explorer')) {
+                if (request.method === 'GET') {
+                    const cache = await this.checkCache(request);
+                    if (cache) {
+                        return cache.data;
+                    }
+                    const result = await next();
+                    this.setCache(request, result);
+                    return result;
+                }
+            }
+        };
+        return cacheMiddleware;
+    }
+}

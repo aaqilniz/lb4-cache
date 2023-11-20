@@ -32,6 +32,8 @@ export class CacheMiddlewareProvider implements Provider<Middleware> {
                     return result;
                 }
             }
+            const result = await next();
+            return result;
         };
         return cacheMiddleware;
     }

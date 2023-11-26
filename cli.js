@@ -11,8 +11,11 @@ const {
   addImport,
   getControllerNames,
   kebabCase,
-  log
+  log,
+  modifySpecs,
+  filterSpec,
 } = require('./utils');
+const loadSpecs = require('./loadSpecs');
 
 module.exports = async () => {
   let {
@@ -21,7 +24,9 @@ module.exports = async () => {
     specURL,
     prefix,
     config,
-    openapi
+    openapi,
+    exclude,
+    readonly,
   } = yargs(process.argv.slice(2)).argv;
 
   if(config && typeof config === 'string') {
@@ -30,6 +35,9 @@ module.exports = async () => {
     cacheTTL = config.cacheTTL;
     specURL = config.specURL;
     prefix = config.prefix;
+    include = config.include;
+    exclude = config.exclude;
+    readonly = config.readonly;
   }
   
   if(openapi && typeof openapi === 'string') {
@@ -45,11 +53,20 @@ module.exports = async () => {
   const modelConfigs = JSON.stringify(require('./model-config.json'));
   const package = require(`${invokedFrom}/package.json`);
 
+  if (exclude && include) throw Error('We cannot have include and exclude at the same time.');
+
   log(chalk.blue('Confirming if this is a LoopBack 4 project.'));
   if (!isLoopBackApp(package)) throw Error('Not a loopback project');
   log(chalk.bold(chalk.green('OK.')));
 
-  const controllerNames = await getControllerNames(specURL, invokedFrom, prefix);
+  const specs = await loadSpecs(specURL, invokedFrom);
+  if (!specs) throw Error('No specs received');
+
+  const modifiedSpecs = modifySpecs(specs, prefix);
+  const filteredSpec = filterSpec(modifiedSpecs, readonly, exclude, include);
+
+  const controllerNames = getControllerNames(filteredSpec, prefix);
+  
   log(chalk.blue('Confirming if openapi routes are in place...'));
   
   controllerNames.forEach(controllerName => {

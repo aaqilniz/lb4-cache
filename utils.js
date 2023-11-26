@@ -2,7 +2,7 @@ const chalk = require('chalk');
 const debug = require('debug')('utils');
 const { exec } = require('child_process');
 const fs = require('fs');
-const loadSpecs = require('./loadSpecs');
+const openapiFilter = require('openapi-filter');
 
 module.exports.log = console.log;
 
@@ -18,24 +18,15 @@ const getCircularReplacer = () => {
   const seen = new WeakSet();
   return (key, value) => {
     if (typeof value === "object" && value !== null) {
-      if (seen.has(value)) {
-        return;
-      }
+      if (seen.has(value)) { return; }
       seen.add(value);
     }
     return value;
   };
 };
 
-module.exports.getControllerNames = async (specURL, invokedFrom, prefix) => {
-  let controllerName = 'OpenApi';
-  const controllerNames = new Set();
-
-  let specs = await loadSpecs(specURL, invokedFrom);
-
-  if (!specs) throw Error('No specs received');
+module.exports.modifySpecs = (specs, prefix) => {
   if (!specs.paths) specs.paths = {};
-
   const { components, paths } = specs;
   let stringifiedApiSpecs = JSON.stringify(specs, getCircularReplacer());
 
@@ -44,6 +35,7 @@ module.exports.getControllerNames = async (specURL, invokedFrom, prefix) => {
     'WithRelations',
     `${prefix}WithRelations`,
   );
+
   // avoid duplication of paths by appending prefix
   if (paths) {
     Object.keys(paths).forEach(eachPath => {
@@ -57,6 +49,7 @@ module.exports.getControllerNames = async (specURL, invokedFrom, prefix) => {
       }
     });
   }
+
   // rewrite every item and append prefix
   if (components) {
     const { schemas } = components;
@@ -85,7 +78,115 @@ module.exports.getControllerNames = async (specURL, invokedFrom, prefix) => {
       });
     }
   }
-  specs = JSON.parse(stringifiedApiSpecs);
+  
+  return JSON.parse(stringifiedApiSpecs);
+}
+
+function getIndiciesOf (searchStr, str, caseSensitive) {
+  let searchStrLen = searchStr.length;
+  if (searchStrLen == 0) { return []; }
+  let startIndex = 0, index, indices = [];
+  if (!caseSensitive) {
+    str = str.toLowerCase();
+    searchStr = searchStr.toLowerCase();
+  }
+  while ((index = str.indexOf(searchStr, startIndex)) > -1) {
+    indices.push(index);
+    startIndex = index + searchStrLen;
+  }
+  return indices;
+}
+
+function insertAtIndex (str, substring, index) {
+  return str.slice(0, index) + substring + str.slice(index);
+}
+
+function applyFilters (stringifiedSpecs, options) {
+  let specs = JSON.parse(stringifiedSpecs);
+  let openapiComponent = specs.components;
+  specs = openapiFilter.filter(specs, options);
+  specs.components = openapiComponent;
+  return specs;
+}
+
+function findIndexes (stringSpecs, regex) {
+  let result;
+  const indices = [];
+  while ((result = regex.exec(stringSpecs))) {
+    indices.push(result.index);
+  }
+  return indices;
+}
+
+function excludeOrIncludeSpec (specs, filter, options) {
+  let stringifiedSpecs = JSON.stringify(specs);
+  let regex = new RegExp(filter, 'g')
+
+
+  const indexes = findIndexes(stringifiedSpecs, regex);
+  let indiciesCount = 0;
+  while (indiciesCount < indexes.length) {
+    let ind = indexes[indiciesCount];
+    for (let i = ind; i < stringifiedSpecs.length; i++) {
+      const toMatch = stringifiedSpecs[i] + stringifiedSpecs[i + 1] + stringifiedSpecs[i + 2];
+      if (toMatch === '":{') {
+        stringifiedSpecs = insertAtIndex(
+          stringifiedSpecs,
+          '"x-filter": true,',
+          i + 3
+        );
+        indiciesCount++;
+        break;
+      }
+
+    }
+  }
+  return applyFilters(stringifiedSpecs, options);
+}
+
+function readonlySpec (specs, options) {
+  let stringifiedSpecs = JSON.stringify(specs);
+  let excludeOps = ['"post":', '"patch":', '"put":', '"delete":'];
+  excludeOps.forEach(operator => {
+    const indices = getIndiciesOf(operator, stringifiedSpecs);
+    let indiciesCount = 0;
+    while (indiciesCount < indices.length) {
+      const indices = getIndiciesOf(operator, stringifiedSpecs);
+      const index = indices[indiciesCount];
+      stringifiedSpecs = insertAtIndex(
+        stringifiedSpecs,
+        '"x-filter": true,',
+        index + operator.length + 1
+      );
+      indiciesCount++;
+    }
+  });
+  return applyFilters(stringifiedSpecs, options);
+}
+
+module.exports.filterSpec = (specs, readonly, exclude, include) => {
+  const options = {
+    valid: true,
+    info: true,
+    strip: true,
+    flags: ['x-filter'],
+    servers: true,
+  };
+  if (readonly) {
+    specs = readonlySpec(specs, options);
+  }
+  if (exclude) { // exclude only specified - include everything else
+    specs = excludeOrIncludeSpec(specs, exclude, options);
+  }
+  if (include) { // include only specified - exclude everything else
+    specs = excludeOrIncludeSpec(specs, include, { ...options, inverse: true });
+  }
+  return specs;
+}
+
+module.exports.getControllerNames = (specs, prefix) => {
+  let controllerName = 'OpenApi';
+  const controllerNames = new Set();
 
   const pathKeys = Object.keys(specs.paths);
   if (!pathKeys.length) throw Error('No paths');

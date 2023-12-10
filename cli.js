@@ -3,6 +3,7 @@ const debug = require('debug')('cli');
 const yargs = require('yargs/yargs');
 const fs = require('fs');
 const path = require('path');
+const {pascalCase} = require('change-case');
 
 const {
   execute,
@@ -47,7 +48,6 @@ module.exports = async () => {
     prefix = openapi.prefix;
   }
 
-  // if(!prefix) prefix = '';
   if (prefix) {
     prefix = prefix.replace(/\w+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
   }
@@ -64,7 +64,6 @@ module.exports = async () => {
 
   const specs = await loadSpecs(specURL, invokedFrom);
   if (!specs) throw Error('No specs received');
-
   let modifiedSpecs = specs;
   if (prefix) {
     modifiedSpecs = modifySpecs(specs, prefix);
@@ -97,7 +96,7 @@ module.exports = async () => {
 
   try {
     const deps = package.dependencies;
-    const pkg = '@aaqilniz/rest-cache@1.0.0';
+    const pkg = '@aaqilniz/rest-cache';
     if (!deps[pkg]) {
       await execute(`npm i ${pkg}`, `Installing ${pkg}`);
     }
@@ -127,18 +126,13 @@ module.exports = async () => {
       fs.copyFileSync(path.join(__dirname, './text-codes/cache-strategy.provider.txt'), providerPath);
       log(chalk.bold(chalk.green('OK.')));
     }
-    
-    log(chalk.blue('Updating cache-strategy.provider.ts'));
-    addImport(providerPath, `import {${toPascalCase(redisDS)}DataSource} from '../datasources';`);
-    
+    addImport(providerPath, `import {${pascalCase(redisDS)}DataSource} from '../datasources';`);
     const redisToLowerCase = redisDS.toLowerCase();
-    
     updateFile(
       providerPath,
       '/* datasource-injection */',
-      `@inject('datasources.${redisDS}') private ${redisToLowerCase}: ${toPascalCase(redisDS)}DataSource,`
+      `@inject('datasources.${redisDS}') private ${redisToLowerCase}: ${pascalCase(redisDS)}DataSource,`
     );
-
     updateFile(
       providerPath,
       '/* datasource-check-and-assignment */',

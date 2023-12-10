@@ -14,7 +14,7 @@ export class CacheStrategyProvider implements Provider<CacheStrategy | undefined
     if (!this.metadata) {
       return undefined;
     }
-
+    
     class BaseRepo<
       E extends Entity,
       IdType,

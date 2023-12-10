@@ -209,7 +209,9 @@ module.exports.getControllerNames = (specs, prefix) => {
         controllerName = op['x-controller-name'].replace('Controller', '');
       }
     }
-    controllerNames.add(`${prefix.toLowerCase()}.` + this.kebabCase(controllerName))
+    if (prefix) {
+      controllerNames.add(`${prefix.toLowerCase()}.` + this.kebabCase(controllerName))
+    }
   });
   return controllerNames;
 }
@@ -250,3 +252,8 @@ module.exports.updateFile = (filePath, updateThis, updateWith, pre, replaceAll) 
 module.exports.addImport = (filePath, newImport) => {
   this.updateFile(filePath, 'import', newImport, true);
 }
+
+module.exports.toPascalCase = string => string
+  .match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)
+  .map(x => x.charAt(0).toUpperCase() + x.slice(1).toLowerCase())
+  .join('');

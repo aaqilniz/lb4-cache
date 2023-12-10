@@ -14,6 +14,7 @@ const {
   log,
   modifySpecs,
   filterSpec,
+  toPascalCase
 } = require('./utils');
 const loadSpecs = require('./loadSpecs');
 
@@ -46,8 +47,10 @@ module.exports = async () => {
     prefix = openapi.prefix;
   }
 
-  if(!prefix) prefix = 'openapi';
-  prefix = prefix.replace(/\w+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
+  // if(!prefix) prefix = '';
+  if (prefix) {
+    prefix = prefix.replace(/\w+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
+  }
 
   const invokedFrom = process.cwd();
   const modelConfigs = JSON.stringify(require('./model-config.json'));
@@ -62,7 +65,10 @@ module.exports = async () => {
   const specs = await loadSpecs(specURL, invokedFrom);
   if (!specs) throw Error('No specs received');
 
-  const modifiedSpecs = modifySpecs(specs, prefix);
+  let modifiedSpecs = specs;
+  if (prefix) {
+    modifiedSpecs = modifySpecs(specs, prefix);
+  }
   const filteredSpec = filterSpec(modifiedSpecs, readonly, exclude, include);
 
   const controllerNames = getControllerNames(filteredSpec, prefix);
@@ -77,16 +83,21 @@ module.exports = async () => {
   });
   log(chalk.bold(chalk.green('OK.')));
   
+  const datasource = kebabCase(redisDS);
+
   log(chalk.blue('Confirming if datasource is generated...'));
-  const datasourcePath = `${invokedFrom}/src/datasources/${kebabCase(redisDS)}.datasource.ts`;
+  
+  const datasourcePath = `${invokedFrom}/src/datasources/${datasource}.datasource.ts`;
+  
   if (!fs.existsSync(datasourcePath)) {
     throw Error('Please generate the datasource first.');
   }
+  
   log(chalk.bold(chalk.green('OK.')));
 
   try {
     const deps = package.dependencies;
-    const pkg = '@aaqilniz/rest-cache';
+    const pkg = '@aaqilniz/rest-cache@1.0.0';
     if (!deps[pkg]) {
       await execute(`npm i ${pkg}`, `Installing ${pkg}`);
     }
@@ -116,6 +127,25 @@ module.exports = async () => {
       fs.copyFileSync(path.join(__dirname, './text-codes/cache-strategy.provider.txt'), providerPath);
       log(chalk.bold(chalk.green('OK.')));
     }
+    
+    log(chalk.blue('Updating cache-strategy.provider.ts'));
+    addImport(providerPath, `import {${toPascalCase(redisDS)}DataSource} from '../datasources';`);
+    
+    const redisToLowerCase = redisDS.toLowerCase();
+    
+    updateFile(
+      providerPath,
+      '/* datasource-injection */',
+      `@inject('datasources.${redisDS}') private ${redisToLowerCase}: ${toPascalCase(redisDS)}DataSource,`
+    );
+
+    updateFile(
+      providerPath,
+      '/* datasource-check-and-assignment */',
+      `if (this.${redisToLowerCase}.name === this.metadata.datasource) {
+        customRepo = new CustomRepo(this.${redisToLowerCase});
+      }`
+    );
 
     const middlewareDir = `${invokedFrom}/src/middleware`;
     if (!fs.existsSync(middlewareDir)) fs.mkdirSync(middlewareDir);
@@ -162,7 +192,7 @@ module.exports = async () => {
       updateFile(
         controllerPath,
         '@operation(\'get\'',
-        `@cache(${cacheTTL || 60*1000})`,
+        `@cache('${redisDS}', ${cacheTTL || 60*1000})`,
         true, //add before
         true  // replace all occurances
       );

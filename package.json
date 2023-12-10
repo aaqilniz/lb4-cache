@@ -27,6 +27,7 @@
   "license": "MIT",
   "dependencies": {
     "chalk": "^4.1.2",
+    "change-case": "^4.1.2",
     "debug": "^4.3.4",
     "openapi-filter": "^3.2.3",
     "swagger-parser": "^10.0.3",

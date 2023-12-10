@@ -198,7 +198,7 @@ module.exports.getControllerNames = (specs, prefix) => {
     const tags = op['tags'];
     if (tags && tags.length) {
       tags.forEach((tag, index) => {
-        if (tag.includes(prefix)) {
+        if (prefix && tag.includes(prefix)) {
           tags[index] = tag.split(prefix)[1];
         }
       });
@@ -211,6 +211,8 @@ module.exports.getControllerNames = (specs, prefix) => {
     }
     if (prefix) {
       controllerNames.add(`${prefix.toLowerCase()}.` + this.kebabCase(controllerName))
+    } else {
+      controllerNames.add(this.kebabCase(controllerName))
     }
   });
   return controllerNames;

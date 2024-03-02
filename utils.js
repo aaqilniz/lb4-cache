@@ -78,13 +78,13 @@ module.exports.modifySpecs = (specs, prefix) => {
       });
     }
   }
-  
+
   return JSON.parse(stringifiedApiSpecs);
 }
 
-function getIndiciesOf (searchStr, str, caseSensitive) {
-  let searchStrLen = searchStr.length;
-  if (searchStrLen == 0) { return []; }
+function getIndiciesOf(searchStr, str, caseSensitive) {
+  const searchStrLen = searchStr.length;
+  if (searchStrLen === 0) { return []; }
   let startIndex = 0, index, indices = [];
   if (!caseSensitive) {
     str = str.toLowerCase();
@@ -97,19 +97,18 @@ function getIndiciesOf (searchStr, str, caseSensitive) {
   return indices;
 }
 
-function insertAtIndex (str, substring, index) {
+function insertAtIndex(str, substring, index) {
   return str.slice(0, index) + substring + str.slice(index);
 }
 
-function applyFilters (stringifiedSpecs, options) {
-  let specs = JSON.parse(stringifiedSpecs);
-  let openapiComponent = specs.components;
+function applyFilters(specs, options) {
+  const openapiComponent = specs.components;
   specs = openapiFilter.filter(specs, options);
   specs.components = openapiComponent;
   return specs;
 }
 
-function findIndexes (stringSpecs, regex) {
+function findIndexes(stringSpecs, regex) {
   let result;
   const indices = [];
   while ((result = regex.exec(stringSpecs))) {
@@ -118,70 +117,77 @@ function findIndexes (stringSpecs, regex) {
   return indices;
 }
 
-function excludeOrIncludeSpec (specs, filter, options) {
+function excludeOrIncludeSpec(specs, filter) {
   let stringifiedSpecs = JSON.stringify(specs);
-  let regex = new RegExp(filter, 'g')
-
+  let regex = new RegExp(filter, 'g');
 
   const indexes = findIndexes(stringifiedSpecs, regex);
   let indiciesCount = 0;
   while (indiciesCount < indexes.length) {
-    let ind = indexes[indiciesCount];
+    const ind = indexes[indiciesCount];
     for (let i = ind; i < stringifiedSpecs.length; i++) {
-      const toMatch = stringifiedSpecs[i] + stringifiedSpecs[i + 1] + stringifiedSpecs[i + 2];
+      const toMatch =
+        stringifiedSpecs[i] + stringifiedSpecs[i + 1] + stringifiedSpecs[i + 2];
       if (toMatch === '":{') {
         stringifiedSpecs = insertAtIndex(
           stringifiedSpecs,
           '"x-filter": true,',
-          i + 3
+          i + 3,
         );
         indiciesCount++;
         break;
       }
-
     }
   }
-  return applyFilters(stringifiedSpecs, options);
+  return JSON.parse(stringifiedSpecs);
 }
 
-function readonlySpec (specs, options) {
+function readonlySpec(specs) {
   let stringifiedSpecs = JSON.stringify(specs);
-  let excludeOps = ['"post":', '"patch":', '"put":', '"delete":'];
+  const excludeOps = ['"post":', '"patch":', '"put":', '"delete":'];
   excludeOps.forEach(operator => {
-    const indices = getIndiciesOf(operator, stringifiedSpecs);
+    let indices = getIndiciesOf(operator, stringifiedSpecs);
     let indiciesCount = 0;
     while (indiciesCount < indices.length) {
-      const indices = getIndiciesOf(operator, stringifiedSpecs);
+      indices = getIndiciesOf(operator, stringifiedSpecs);
       const index = indices[indiciesCount];
       stringifiedSpecs = insertAtIndex(
         stringifiedSpecs,
         '"x-filter": true,',
-        index + operator.length + 1
+        index + operator.length + 1,
       );
       indiciesCount++;
     }
   });
-  return applyFilters(stringifiedSpecs, options);
+  return JSON.parse(stringifiedSpecs);
 }
 
-module.exports.filterSpec = (specs, readonly, exclude, include) => {
+module.exports.filterSpec = (specs, readonly, excludingList, includingList) => {
   const options = {
     valid: true,
     info: true,
     strip: true,
     flags: ['x-filter'],
     servers: true,
+    inverse: false,
   };
   if (readonly) {
-    specs = readonlySpec(specs, options);
+    specs = readonlySpec(specs);
   }
-  if (exclude) { // exclude only specified - include everything else
-    specs = excludeOrIncludeSpec(specs, exclude, options);
+  if (excludingList) {
+    const excludings = excludingList.split(',');
+    excludings.forEach(exclude => {
+      specs = excludeOrIncludeSpec(specs, exclude);
+    });
   }
-  if (include) { // include only specified - exclude everything else
-    specs = excludeOrIncludeSpec(specs, include, { ...options, inverse: true });
+  if (includingList) {
+    const includings = includingList.split(',');
+    includings.forEach(include => {
+      specs = excludeOrIncludeSpec(specs, include);
+    });
+    options.inverse = true;
   }
-  return specs;
+  return applyFilters(specs, options);
 }
 
 module.exports.getControllerNames = (specs, prefix) => {

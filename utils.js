@@ -28,7 +28,7 @@ const getCircularReplacer = () => {
 module.exports.modifySpecs = (specs, prefix) => {
   if (!specs.paths) specs.paths = {};
   const { components, paths } = specs;
-  let stringifiedApiSpecs = JSON.stringify(specs, getCircularReplacer());
+  let stringifiedApiSpecs = JSON.stringify(specs);
 
   // rewrite WithRelations and append prefix to avoid duplications
   stringifiedApiSpecs = stringifiedApiSpecs.replaceAll(
@@ -171,14 +171,15 @@ module.exports.filterSpec = (specs, readonly, excludingList, includingList) => {
     servers: true,
     inverse: false,
   };
-  if (readonly) {
-    specs = readonlySpec(specs);
-  }
+  // remove circular dependency
+  specs = JSON.stringify(specs, getCircularReplacer());
+  specs = JSON.parse(specs);
   if (excludingList) {
     const excludings = excludingList.split(',');
     excludings.forEach(exclude => {
       specs = excludeOrIncludeSpec(specs, exclude);
     });
+    specs = applyFilters(specs, options);
   }
   if (includingList) {
     const includings = includingList.split(',');
@@ -186,8 +187,13 @@ module.exports.filterSpec = (specs, readonly, excludingList, includingList) => {
       specs = excludeOrIncludeSpec(specs, include);
     });
     options.inverse = true;
+    specs = applyFilters(specs, options);
   }
-  return applyFilters(specs, options);
+  if (readonly) {
+    options.inverse = false;
+    specs = applyFilters(readonlySpec(specs), options);
+  }
+  return specs;
 }
 
 module.exports.getControllerNames = (specs, prefix) => {

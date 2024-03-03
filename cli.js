@@ -15,7 +15,6 @@ const {
   log,
   modifySpecs,
   filterSpec,
-  toPascalCase
 } = require('./utils');
 const loadSpecs = require('./loadSpecs');
 
@@ -62,15 +61,16 @@ module.exports = async () => {
   if (!isLoopBackApp(package)) throw Error('Not a loopback project');
   log(chalk.bold(chalk.green('OK.')));
 
-  const specs = await loadSpecs(specURL, invokedFrom);
+  let specs = await loadSpecs(specURL, invokedFrom);
   if (!specs) throw Error('No specs received');
-  let modifiedSpecs = specs;
-  if (prefix) {
-    modifiedSpecs = modifySpecs(specs, prefix);
-  }
-  const filteredSpec = filterSpec(modifiedSpecs, readonly, exclude, include);
 
-  const controllerNames = getControllerNames(filteredSpec, prefix);
+  const filteredSpec = filterSpec(specs, readonly, exclude, include);
+  let modifiedSpecs = filteredSpec;
+  if (prefix) {
+    modifiedSpecs = modifySpecs(modifiedSpecs, prefix);
+  }
+
+  const controllerNames = getControllerNames(modifiedSpecs, prefix);
   
   log(chalk.blue('Confirming if openapi routes are in place...'));
   

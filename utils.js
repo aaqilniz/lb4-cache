@@ -118,28 +118,25 @@ function findIndexes(stringSpecs, regex) {
 }
 
 function excludeOrIncludeSpec(specs, filter) {
-  let stringifiedSpecs = JSON.stringify(specs);
-  let regex = new RegExp(filter, 'g');
-
-  const indexes = findIndexes(stringifiedSpecs, regex);
-  let indiciesCount = 0;
-  while (indiciesCount < indexes.length) {
-    const ind = indexes[indiciesCount];
-    for (let i = ind; i < stringifiedSpecs.length; i++) {
-      const toMatch =
-        stringifiedSpecs[i] + stringifiedSpecs[i + 1] + stringifiedSpecs[i + 2];
-      if (toMatch === '":{') {
-        stringifiedSpecs = insertAtIndex(
-          stringifiedSpecs,
-          '"x-filter": true,',
-          i + 3,
-        );
-        indiciesCount++;
-        break;
+  Object.keys(filter).forEach(filterKey => {
+    const regex = new RegExp(filterKey, 'g');
+    const actions = filter[filterKey];
+    for (const key in specs.paths) {
+      if (Object.hasOwnProperty.call(specs.paths, key)) {
+        if (findIndexes(key, regex).length) {
+          if (specs.paths[key]) {
+            actions.forEach(action => {
+              action = action.toLowerCase();
+              if (specs.paths[key][action]) {
+                specs.paths[key][action]['x-filter'] = true;
+              }
+            });
+          }
+        }
       }
     }
-  }
-  return JSON.parse(stringifiedSpecs);
+  });
+  return specs;
 }
 
 function readonlySpec(specs) {
@@ -162,7 +159,7 @@ function readonlySpec(specs) {
   return JSON.parse(stringifiedSpecs);
 }
 
-module.exports.filterSpec = (specs, readonly, excludingList, includingList) => {
+module.exports.filterSpec = (specs, readonly, excludings, includings) => {
   const options = {
     valid: true,
     info: true,
@@ -174,15 +171,13 @@ module.exports.filterSpec = (specs, readonly, excludingList, includingList) => {
   // remove circular dependency
   specs = JSON.stringify(specs, getCircularReplacer());
   specs = JSON.parse(specs);
-  if (excludingList) {
-    const excludings = excludingList.split(',');
+  if (excludings && excludings.length) {
     excludings.forEach(exclude => {
       specs = excludeOrIncludeSpec(specs, exclude);
     });
     specs = applyFilters(specs, options);
   }
-  if (includingList) {
-    const includings = includingList.split(',');
+  if (includings && includings.length) {
     includings.forEach(include => {
       specs = excludeOrIncludeSpec(specs, include);
     });
@@ -195,6 +190,7 @@ module.exports.filterSpec = (specs, readonly, excludingList, includingList) => {
   }
   return specs;
 }
+
 
 module.exports.getControllerNames = (specs, prefix) => {
   let controllerName = 'OpenApi';

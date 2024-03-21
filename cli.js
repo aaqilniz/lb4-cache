@@ -64,7 +64,46 @@ module.exports = async () => {
   let specs = await loadSpecs(specURL, invokedFrom);
   if (!specs) throw Error('No specs received');
 
-  const filteredSpec = filterSpec(specs, readonly, exclude, include);
+
+
+  let includingList = [];
+  let excludingList = [];
+  let includings = [];
+  let excludings = [];
+  if (exclude) {
+    excludings = exclude.split(',');
+  }
+  if (include) {
+    includings = include.split(',');
+  }
+  includings.forEach(including => {
+    if (including.includes(':')) {
+      const splitedInclude = including.split(':');
+      const temp = {};
+      if (splitedInclude[0] === '*') {
+        temp[splitedInclude[1]] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+        includingList.push(temp);
+      } else {
+        temp[splitedInclude[1]] = [splitedInclude[0]];
+        includingList.push(temp);
+      }
+    }
+  });
+  excludings.forEach(excluding => {
+    if (excluding.includes(':')) {
+      const splitedExclude = excluding.split(':');
+      const temp = {};
+      if (splitedExclude[0] === '*') {
+        temp[splitedExclude[1]] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+        excludingList.push(temp);
+      } else {
+        temp[splitedExclude[1]] = [splitedExclude[0]];
+        excludingList.push(temp);
+      }
+    }
+  });
+
+  const filteredSpec = filterSpec(specs, readonly, excludingList, includingList);
   let modifiedSpecs = filteredSpec;
   if (prefix) {
     modifiedSpecs = modifySpecs(modifiedSpecs, prefix);
@@ -87,7 +126,6 @@ module.exports = async () => {
   log(chalk.blue('Confirming if datasource is generated...'));
   
   const datasourcePath = `${invokedFrom}/src/datasources/${datasource}.datasource.ts`;
-  
   if (!fs.existsSync(datasourcePath)) {
     throw Error('Please generate the datasource first.');
   }

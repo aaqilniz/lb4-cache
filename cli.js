@@ -223,10 +223,8 @@ module.exports = async () => {
       Object.keys(modifiedSpecs.paths).forEach(path => {
         addCacheDecorator(
           controllerPath,
-          `@operation('get', '${path}`,
+          `@operation('get', '${path}'`,
           `@cache('${redisDS}', ${cacheTTL || 60*1000})`,
-          true, //add before
-          true  // replace all occurances
         );
       });
     });

@@ -41,7 +41,7 @@ module.exports.modifySpecs = (specs, prefix) => {
     Object.keys(paths).forEach(eachPath => {
       if (!eachPath.includes('{id}') && !eachPath.includes('count')) {
         const updatedPath =
-          eachPath.slice(0, 0) + `${prefix.toLowerCase()}.` + eachPath.slice(1);
+          eachPath.slice(0, 0) + `/${prefix.toLowerCase()}/` + eachPath.slice(1);
         stringifiedApiSpecs = stringifiedApiSpecs.replaceAll(
           eachPath,
           updatedPath,

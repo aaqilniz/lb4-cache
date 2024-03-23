@@ -248,19 +248,26 @@ module.exports.isLoopBackApp = (package) => {
   return true;
 }
 
-module.exports.updateFile = (filePath, updateThis, updateWith, pre, replaceAll) => {
+module.exports.updateFile = (filePath, updateThis, updateWith) => {
   const file = fs.readFileSync(filePath, 'utf8');
   if (file.indexOf(updateWith) === -1) {
-    const updatedFile = file[replaceAll ? 'replaceAll' : 'replace'](
-      updateThis,
-      pre ? updateWith + '\n' + updateThis : updateThis + '\n\t' + updateWith
-    );
+    const updatedFile = file.replace(updateThis, updateThis + '\n\t' + updateWith);
     fs.writeFileSync(filePath, updatedFile, 'utf8');
   }
 }
 
+module.exports.addCacheDecorator = (filePath, operator, cacheDecorator) => {
+  const file = fs.readFileSync(filePath, 'utf8');
+  updatedFile = file.replaceAll(operator, cacheDecorator + '\n\t' + operator);
+  fs.writeFileSync(filePath, updatedFile, 'utf8');
+}
+
 module.exports.addImport = (filePath, newImport) => {
-  this.updateFile(filePath, 'import', newImport, true);
+  const file = fs.readFileSync(filePath, 'utf8');
+  if (file.indexOf(newImport) === -1) {
+    const updatedFile = file.replace('import', newImport + 'import');
+    fs.writeFileSync(filePath, updatedFile, 'utf8');
+  }
 }
 
 module.exports.toPascalCase = string => string

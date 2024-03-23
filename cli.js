@@ -9,6 +9,7 @@ const {
   execute,
   isLoopBackApp,
   updateFile,
+  addCacheDecorator,
   addImport,
   getControllerNames,
   kebabCase,
@@ -102,7 +103,6 @@ module.exports = async () => {
       }
     }
   });
-
   const filteredSpec = filterSpec(specs, readonly, excludingList, includingList);
   let modifiedSpecs = filteredSpec;
   if (prefix) {
@@ -216,18 +216,19 @@ module.exports = async () => {
     );
     log(chalk.bold(chalk.green('OK.')));
 
-    
     log(chalk.blue('Adding new imports to controller.ts'));
     controllerNames.forEach(controllerName => {
       const controllerPath = `${invokedFrom}/src/controllers/${controllerName}.controller.ts`;
       addImport(controllerPath, 'import {cache} from \'@aaqilniz/rest-cache\';');
-      updateFile(
-        controllerPath,
-        '@operation(\'get\'',
-        `@cache('${redisDS}', ${cacheTTL || 60*1000})`,
-        true, //add before
-        true  // replace all occurances
-      );
+      Object.keys(modifiedSpecs.paths).forEach(path => {
+        addCacheDecorator(
+          controllerPath,
+          `@operation('get', '${path}`,
+          `@cache('${redisDS}', ${cacheTTL || 60*1000})`,
+          true, //add before
+          true  // replace all occurances
+        );
+      });
     });
     log(chalk.green('Everything done.'));
     process.exit(0);

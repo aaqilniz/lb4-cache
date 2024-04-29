@@ -207,7 +207,7 @@ module.exports.getControllerNames = (specs, prefix) => {
     if (tags && tags.length) {
       tags.forEach((tag, index) => {
         if (prefix && tag.includes(prefix)) {
-          tags[index] = tag.split(prefix)[1];
+          tags[index] = tag.split(prefix).join('');
         }
       });
       controllerName = tags[0].replace('Controller', '');
